@@ -22,7 +22,11 @@ function Layout({ children }: LayoutProps) {
     <div className="flex h-screen bg-gray-100">
       <aside className="w-64 bg-white shadow-md">
         <div className="p-4">
-          <h1 className="text-xl font-bold text-gray-800">Culture Amp</h1>
+          <a href="https://www.culture-maker.com/" target="_blank" rel="noopener noreferrer">
+            <h1 className="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors">
+              Culture Maker
+            </h1>
+          </a>
         </div>
         <nav className="mt-4">
           <Link

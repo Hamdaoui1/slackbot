@@ -1,68 +1,84 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
-import { Activity, User, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Shield, ArrowLeft } from 'lucide-react';
 
-function Register() {
+function AdminRegister() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const validateForm = () => {
-    if (!email || !password || !confirmPassword || !firstName || !lastName || !companyName) {
-      setError('Tous les champs sont obligatoires');
+    if (!email || !password || !confirmPassword || !firstName || !lastName) {
+      setError('Tous les champs sont requis');
       return false;
     }
+
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
+
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
       return false;
     }
+
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
     if (!validateForm()) {
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+
     try {
+      // Vérifier si l'email est déjà utilisé
+      const adminQuery = await getDoc(doc(db, 'admins', email));
+      if (adminQuery.exists()) {
+        setError('Cet email est déjà utilisé par un administrateur');
+        return;
+      }
+
       // Créer l'utilisateur dans Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const { uid } = userCredential.user;
 
-      // Créer le document dans la collection users
-      await setDoc(doc(db, 'users', uid), {
+      // Créer le document admin dans la collection 'admins'
+      await setDoc(doc(db, 'admins', uid), {
         email,
         firstName,
         lastName,
-        companyName,
-        role: 'employee',
-        status: 'pending',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
       });
 
-      // Déconnecter l'utilisateur
-      await auth.signOut();
-      
-      // Rediriger vers la page de connexion avec un message de succès
-      navigate('/login?message=registration_success', { replace: true });
+      // Mettre à jour le contexte d'authentification
+      login({
+        uid,
+        email,
+        firstName,
+        lastName,
+        company: '',
+        role: 'admin'
+      });
+
+      // Rediriger vers le tableau de bord admin
+      navigate('/admin/dashboard');
     } catch (error: any) {
       console.error('Erreur lors de l\'inscription:', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -81,13 +97,13 @@ function Register() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
         <div className="flex items-center justify-between mb-8">
-          <Link to="/" className="text-blue-600 hover:text-blue-800 flex items-center">
+          <Link to="/admin-login" className="text-blue-600 hover:text-blue-800 flex items-center">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Link>
           <div className="flex items-center">
-            <Activity className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900 ml-2">Inscription Employé</h1>
+            <Shield className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900 ml-2">Inscription Admin</h1>
           </div>
         </div>
 
@@ -128,20 +144,6 @@ function Register() {
 
           <div>
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Entreprise *
-            </label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Entrez le nom de votre entreprise"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 text-sm font-bold mb-2">
               Email *
             </label>
             <input
@@ -166,6 +168,9 @@ function Register() {
               placeholder="Entrez votre mot de passe"
               required
             />
+            <p className="mt-1 text-sm text-gray-500">
+              Le mot de passe doit contenir au moins 6 caractères
+            </p>
           </div>
 
           <div>
@@ -190,41 +195,26 @@ function Register() {
             {loading ? (
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             ) : (
-              'S\'inscrire'
+              'Créer le compte administrateur'
             )}
           </button>
 
-          <div className="flex flex-col space-y-4 mt-4">
-            <div className="text-center text-sm text-gray-600">
-              Déjà inscrit ?{' '}
-              <Link to="/login" className="text-blue-600 hover:text-blue-800">
-                Se connecter
-              </Link>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Ou</span>
-              </div>
-            </div>
-
-            <div className="flex justify-center space-x-4">
-              <Link
-                to="/admin-login"
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Connexion Admin
-              </Link>
-            </div>
-          </div>
+         <div className="text-center text-sm text-gray-600 mt-4">
+  Already have an account?{' '}
+  <Link to="/admin-login" className="text-blue-600 hover:text-blue-800">
+    Admin Login
+  </Link>
+  <p>
+    Are you a sub-admin?{' '}
+    <Link to="/sub-admin-login" className="text-blue-600 hover:text-blue-800">
+      Sub-Admin login
+    </Link>
+  </p>
+</div>
         </form>
       </div>
     </div>
   );
 }
 
-export default Register;
+export default AdminRegister; 

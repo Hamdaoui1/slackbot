@@ -22,10 +22,12 @@ export const Sidebar = () => {
   );
 };
 
+
 export const Navbar = ({ user }: { user: User }) => {
   return (
     <div className="fixed top-0 left-64 right-0 bg-white shadow-md h-16 flex items-center px-6">
       <div className="flex items-center">
+        <img src="/src/assets/logo.svg" alt="Culture Maker Logo" className="h-10 mr-4" />
         <span className="font-medium">
           {user.firstName} {user.lastName}
         </span>
@@ -34,4 +36,4 @@ export const Navbar = ({ user }: { user: User }) => {
       </div>
     </div>
   );
-}; 
+};

@@ -4,6 +4,9 @@ export interface User {
   company: string;
   email: string;
   uid: string;
-  role: 'admin' | 'employee';
-  status?: 'pending' | 'approved';
-} 
+  companyId?: string;
+  role: 'admin' | 'employee' | 'sub-admin'; 
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt?: string;
+  approvedAt?: string;
+}

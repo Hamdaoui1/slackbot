@@ -20,6 +20,11 @@ export const Sidebar = () => {
   return (
     <div className="w-64 h-screen bg-gray-800 text-white fixed left-0 top-0">
       <nav className="mt-16 p-4">
+        <a href="https://www.culture-maker.com/" target="_blank" rel="noopener noreferrer">
+          <h1 className="text-xl font-bold text-white hover:text-blue-400 transition-colors">
+            Culture Maker
+          </h1>
+        </a>
         <Link to="dashboard" className="flex items-center p-3 hover:bg-gray-700 rounded">
           <span className="mr-3">🏠</span> Accueil
         </Link>

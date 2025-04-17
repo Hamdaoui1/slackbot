@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Activity, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Shield, User, ArrowLeft, CheckCircle } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
-function Login() {
+function SubAdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,12 +31,12 @@ function Login() {
   // Rediriger l'utilisateur s'il est déjà connecté
   useEffect(() => {
     if (!authLoading && user) {
-      if (user.role === 'employee') {
-        navigate('/employee/dashboard', { replace: true });
+      if (user.role === 'sub-admin') {
+        navigate('/sub-admin/dashboard', { replace: true });
       } else if (user.role === 'admin') {
         navigate('/admin/dashboard', { replace: true });
-      } else if (user.role === 'sub-admin') {
-        navigate('/sub-admin/dashboard', { replace: true });
+      } else if (user.role === 'employee') {
+        navigate('/employee/dashboard', { replace: true });
       }
     }
   }, [user, authLoading, navigate]);
@@ -48,26 +49,26 @@ function Login() {
     setShowSuccess(false);
 
     try {
-      // Rechercher l'utilisateur par email
-      const userQuery = query(
-        collection(db, 'users'),
+      // Rechercher le sous-admin par email
+      const subAdminQuery = query(
+        collection(db, 'sub-admin'),
         where('email', '==', email)
       );
-      const querySnapshot = await getDocs(userQuery);
+      const querySnapshot = await getDocs(subAdminQuery);
       
       if (querySnapshot.empty) {
         setError('Ce compte n\'existe pas dans notre système. Veuillez vérifier votre email ou vous inscrire.');
         return;
       }
 
-      const userData = querySnapshot.docs[0].data();
+      const subAdminData = querySnapshot.docs[0].data();
       
-      if (userData.status === 'pending') {
+      if (subAdminData.status === 'pending') {
         setShowPendingMessage(true);
         return;
       }
 
-      if (userData.status === 'rejected') {
+      if (subAdminData.status === 'rejected') {
         setError('Votre compte n\'a pas été approuvé par l\'administrateur. Veuillez contacter l\'administrateur pour plus d\'informations.');
         return;
       }
@@ -76,22 +77,25 @@ function Login() {
       try {
         await signInWithEmailAndPassword(auth, email, password);
         
-        // Créer un objet utilisateur personnalisé
+        // Créer un objet utilisateur personnalisé avec toutes les données du sous-admin
         const customUser = {
           uid: auth.currentUser?.uid || '',
           email: email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          companyName: userData.companyName,
-          role: 'employee',
-          status: userData.status
+          firstName: subAdminData.firstName,
+          lastName: subAdminData.lastName,
+          company: subAdminData.company,
+          companyId: subAdminData.companyId,
+          role: 'sub-admin',
+          status: subAdminData.status,
+          createdAt: subAdminData.createdAt,
+          approvedAt: subAdminData.approvedAt
         };
 
         // Sauvegarder l'utilisateur dans le localStorage
         localStorage.setItem('user', JSON.stringify(customUser));
 
         // Rediriger vers le tableau de bord
-        navigate('/employee/dashboard', { replace: true });
+        navigate('/sub-admin/dashboard', { replace: true });
       } catch (authError: any) {
         if (authError.code === 'auth/wrong-password') {
           setError('Mot de passe incorrect. Veuillez vérifier vos identifiants.');
@@ -118,11 +122,15 @@ function Login() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        <div className="flex items-center justify-center mb-8">
-          <Activity className="h-8 w-8 text-blue-600" />
-          <a href="https://www.culture-maker.com/" target="_blank" rel="noopener noreferrer">
-            <h1 className="text-2xl font-bold text-gray-900 ml-2">Culture maker</h1>
-          </a>
+        <div className="flex items-center justify-between mb-8">
+          <Link to="/" className="text-blue-600 hover:text-blue-800 flex items-center">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour
+          </Link>
+          <div className="flex items-center">
+            <Shield className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl font-bold text-gray-900 ml-2">Connexion Sous-Admin</h1>
+          </div>
         </div>
 
         {showSuccess && (
@@ -199,7 +207,7 @@ function Login() {
           <div className="flex flex-col space-y-4 mt-4">
             <div className="text-center text-sm text-gray-600">
               Pas encore inscrit ?{' '}
-              <Link to="/register" className="text-blue-600 hover:text-blue-800">
+              <Link to="/sub-admin-register" className="text-blue-600 hover:text-blue-800">
                 S'inscrire
               </Link>
             </div>
@@ -215,18 +223,11 @@ function Login() {
 
             <div className="flex justify-center space-x-4">
               <Link
-                to="/admin-login"
+                to="/login"
                 className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
               >
                 <User className="h-4 w-4 mr-2" />
-                Connexion Admin
-              </Link>
-              <Link
-                to="/sub-admin-login"
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors duration-200"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Connexion Sous-Admin
+                Connexion Employé
               </Link>
             </div>
           </div>
@@ -236,4 +237,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default SubAdminLogin;
