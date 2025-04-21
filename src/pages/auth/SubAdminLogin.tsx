@@ -43,69 +43,47 @@ function SubAdminLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    console.log('SubAdminLogin - Attempting login with:', { email });
+    
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
     setLoading(true);
-    setShowPendingMessage(false);
-    setShowSuccess(false);
+    setError('');
 
     try {
-      // Rechercher le sous-admin par email
-      const subAdminQuery = query(
-        collection(db, 'sub-admin'),
-        where('email', '==', email)
-      );
-      const querySnapshot = await getDocs(subAdminQuery);
+      console.log('SubAdminLogin - Calling Firebase signInWithEmailAndPassword');
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('SubAdminLogin - Firebase authentication successful');
       
-      if (querySnapshot.empty) {
-        setError('Ce compte n\'existe pas dans notre système. Veuillez vérifier votre email ou vous inscrire.');
-        return;
-      }
-
-      const subAdminData = querySnapshot.docs[0].data();
-      
-      if (subAdminData.status === 'pending') {
-        setShowPendingMessage(true);
-        return;
-      }
-
-      if (subAdminData.status === 'rejected') {
-        setError('Votre compte n\'a pas été approuvé par l\'administrateur. Veuillez contacter l\'administrateur pour plus d\'informations.');
-        return;
-      }
-
-      // Tenter de se connecter avec Firebase Auth
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        
-        // Créer un objet utilisateur personnalisé avec toutes les données du sous-admin
-        const customUser = {
-          uid: auth.currentUser?.uid || '',
-          email: email,
-          firstName: subAdminData.firstName,
-          lastName: subAdminData.lastName,
-          company: subAdminData.company,
-          companyId: subAdminData.companyId,
-          role: 'sub-admin',
-          status: subAdminData.status,
-          createdAt: subAdminData.createdAt,
-          approvedAt: subAdminData.approvedAt
-        };
-
-        // Sauvegarder l'utilisateur dans le localStorage
-        localStorage.setItem('user', JSON.stringify(customUser));
-
-        // Rediriger vers le tableau de bord
-        navigate('/sub-admin/dashboard', { replace: true });
-      } catch (authError: any) {
-        if (authError.code === 'auth/wrong-password') {
-          setError('Mot de passe incorrect. Veuillez vérifier vos identifiants.');
+      // Vérifier si l'utilisateur est un sous-admin
+      const user = auth.currentUser;
+      if (user) {
+        console.log('SubAdminLogin - Checking user role');
+        const userDoc = await getDoc(doc(db, 'sub-admin', user.email!));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log('SubAdminLogin - User data:', userData);
+          
+          if (userData.status === 'approved') {
+            console.log('SubAdminLogin - User is approved sub-admin, redirecting to dashboard');
+            navigate('/sub-admin/dashboard');
+          } else {
+            console.log('SubAdminLogin - User is not approved');
+            setError('Votre compte est en attente d\'approbation');
+            await auth.signOut();
+          }
         } else {
-          setError('Une erreur est survenue lors de la connexion. Veuillez réessayer.');
+          console.log('SubAdminLogin - User is not a sub-admin');
+          setError('Vous n\'êtes pas autorisé à accéder à cette page');
+          await auth.signOut();
         }
       }
     } catch (error: any) {
-      console.error('Erreur:', error);
-      setError('Une erreur est survenue lors de la vérification de vos identifiants. Veuillez réessayer.');
+      console.error('SubAdminLogin - Error during login:', error);
+      setError(error.message || 'Une erreur est survenue lors de la connexion');
     } finally {
       setLoading(false);
     }

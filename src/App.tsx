@@ -26,6 +26,9 @@ import SubAdminLayout from './components/SubAdminLayout';
 import SubAdminEmployees from './pages/sub-admin/Employees';
 import SubAdminTeamPage from './pages/sub-admin/TeamPage';
 import SubAdminTeams from './pages/sub-admin/Teams';
+import SubAdminQuestionnaire from './pages/sub-admin/Questionnaire';
+
+console.log('App.tsx - SubAdminQuestionnaire import:', SubAdminQuestionnaire);
 
 function App() {
   return (
@@ -56,6 +59,15 @@ function App() {
             <Route path="employees" element={<SubAdminEmployees />} />
             <Route path="teams" element={<SubAdminTeams />} />
             <Route path="team/:teamId" element={<SubAdminTeamPage />} />
+            <Route 
+              path="questionnaire" 
+              element={
+                (() => {
+                  console.log('App.tsx - Rendering SubAdminQuestionnaire route');
+                  return <SubAdminQuestionnaire />;
+                })()
+              } 
+            />
             <Route path="*" element={<Navigate to="/sub-admin/dashboard" replace />} />
           </Route>
 
@@ -196,8 +208,11 @@ function EmployeePrivateLayout() {
 
 function SubAdminPrivateLayout() {
   const { user, loading } = useAuthState();
+  console.log('SubAdminPrivateLayout - User:', user);
+  console.log('SubAdminPrivateLayout - Loading:', loading);
 
   if (loading) {
+    console.log('SubAdminPrivateLayout - Loading state');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -206,21 +221,32 @@ function SubAdminPrivateLayout() {
   }
 
   if (!user) {
+    console.log('SubAdminPrivateLayout - No user found, redirecting to login');
     return <Navigate to="/sub-admin-login" replace />;
   }
 
-  if (user.role !== 'sub-admin') {
+  console.log('SubAdminPrivateLayout - Checking user role and status:', {
+    role: user.role,
+    status: user.status
+  });
+
+  if (user.role !== 'sub-admin' || user.status !== 'approved') {
+    console.log('SubAdminPrivateLayout - Invalid role or status, redirecting');
     // Redirection basée sur le rôle
     switch (user.role) {
       case 'admin':
+        console.log('SubAdminPrivateLayout - Redirecting to admin dashboard');
         return <Navigate to="/admin/dashboard" replace />;
       case 'employee':
+        console.log('SubAdminPrivateLayout - Redirecting to employee dashboard');
         return <Navigate to="/employee/dashboard" replace />;
       default:
+        console.log('SubAdminPrivateLayout - Redirecting to login');
         return <Navigate to="/login" replace />;
     }
   }
 
+  console.log('SubAdminPrivateLayout - Rendering layout');
   return (
     <SubAdminLayout>
       <Outlet />
